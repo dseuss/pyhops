@@ -30,15 +30,17 @@ INVALID_INDEX = -1
 
 
 def _lookup_coupling_indices(vecind):
-    """ Create indices for coupling above/below in the hierarchy.
+    """Create indices for coupling above/below in the hierarchy.
 
-    :vecind[:,:]: `vecind[i]` is the i-th vector index in the hierarchy.
-    :returns: indab[:,:], indbl[:,:]; `indab[i, j]` is the integer-index
-              corresponding to the vector index `vecind[i] + e_j`.
+    vecind[:,:] --  `vecind[i]` is the i-th vector index in the hierarchy.
+
+    Returns:
+    indab[:,:], indbl[:,:] -- `indab[i, j]` is the integer-index
+                               corresponding to the vector index
+                               `vecind[i] + e_j`.
 
     Note: This is not a member of HierarchyStructure to allow for easier
           extraction into cython-module if needed.
-
     """
     iind = dict(izip([tuple(x) for x in vecind], range(vecind.shape[0])))
     e = np.identity(vecind.shape[1], dtype=int)
@@ -51,14 +53,13 @@ def _lookup_coupling_indices(vecind):
 
 class HierarchyStructure(object):
 
-    """ Structure for the given number of modes and truncation criteria.
+    """Structure for the given number of modes and truncation criteria.
 
     Usage:
-        H = HierarchyStructure(modes=3, depth=2)
-        entries = H.entries         # Number of entries
-        H.vecind[0]                 # Vector index k = (0,...,0)
-        H.vecind[H.indab[0, 1]]     # Vector index k = (0,1,...,0)
-
+    H = HierarchyStructure(modes=3, depth=2)
+    entries = H.entries         # Number of entries
+    H.vecind[0]                 # Vector index k = (0,...,0)
+    H.vecind[H.indab[0, 1]]     # Vector index k = (0,1,...,0)
     """
 
     @property
@@ -67,11 +68,12 @@ class HierarchyStructure(object):
 
     def __init__(self, modes, depth, pop_modes=None, cutoff=None):
         """
-        :modes: Number of modes
-        :depth: Depth of the hierarchy
-        :pop_modes(modes): Maximal number of modes i with k_i != 0
-        :cutoff[modes]([depth, ..., depth]): Manual cutoff array
+        modes -- Number of modes
+        depth -- Depth of the hierarchy
 
+        Keyword arguments:
+        pop_modes     -- Max number of modes i with k_i != 0 (default modes)
+        cutoff[modes] -- Manual cutoff array (default [depth, ..., depth])
         """
         self._modes = modes
         self._depth = depth
@@ -87,13 +89,12 @@ class HierarchyStructure(object):
         self.indab, self.indbl = _lookup_coupling_indices(self.vecind)
 
     def _recursive_indices(self, k, currPop):
-        """ Recursively construct the hierachy.
+        """Recursively construct the hierachy.
 
-        :k: Tuple with already determined entries.
-        :currPop: Number of currently "populated" modes.
+        k       -- Tuple with already determined entries.
+        currPop -- Number of currently "populated" modes.
 
         Usage (to construct full hierarchy): `self._recursive_indices((), 0)`
-
         """
         if len(k) >= self._modes - 1:
             self._add(k + (0,))
@@ -110,11 +111,10 @@ class HierarchyStructure(object):
                 self._recursive_indices(k + (i,), currPop + 1)
 
     def _add(self, k):
-        """ Adds the vector index `k` to the hierarchy structure if it does not
+        """Adds the vector index `k` to the hierarchy structure if it does not
         violate the manual cutoff criterion.
 
-        :k[modes]: Vector index to add.
-
+        k[modes] -- Vector index to add.
         """
         if all(np.asarray(k) <= self._cutoff):
             self.vecind.append(k)
@@ -127,13 +127,3 @@ class HierarchyStructure(object):
                 rep.append('  +{}: {} | -{}: {}'.format(j, self.indab[i][j], j,
                                                         self.indbl[i][j]))
         return '\n'.join(rep)
-
-if __name__ == '__main__':
-    # from time import time
-    # t1 = time()
-    # H = HierarchyStructure(20, 6)
-    # print(H.entries)
-    # print('Took {}'.format(time() - t1))
-
-    H = HierarchyStructure(2, 2)
-    print(H)
