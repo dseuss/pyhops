@@ -1,0 +1,7 @@
+{
+'real': {'sp':'float'},
+'real': {'dp':'double'},
+'complex': {'sp':'complex_float'},
+'complex': {'dp':'complex_double'},
+'integer': {'ki': 'int'}
+}
