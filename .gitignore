@@ -1,1 +1,6 @@
 *.pyc
+*.mod
+*.o
+*.so
+
+bin
