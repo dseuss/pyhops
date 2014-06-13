@@ -29,28 +29,6 @@ from itertools import izip
 INVALID_INDEX = -1
 
 
-def _lookup_coupling_indices(vecind):
-    """Create indices for coupling above/below in the hierarchy.
-
-    vecind[:,:] --  `vecind[i]` is the i-th vector index in the hierarchy.
-
-    Returns:
-    indab[:,:], indbl[:,:] -- `indab[i, j]` is the integer-index
-                               corresponding to the vector index
-                               `vecind[i] + e_j`.
-
-    Note: This is not a member of HierarchyStructure to allow for easier
-          extraction into cython-module if needed.
-    """
-    iind = dict(izip([tuple(x) for x in vecind], range(vecind.shape[0])))
-    e = np.identity(vecind.shape[1], dtype=int)
-    iab, ibl = [None] * vecind.shape[0], [None] * vecind.shape[0]
-    for i, k in enumerate(vecind):
-        iab[i] = [iind.get(tuple(kp), INVALID_INDEX) for kp in k + e]
-        ibl[i] = [iind.get(tuple(km), INVALID_INDEX) for km in k - e]
-    return np.asarray(iab, dtype=int), np.asarray(ibl, dtype=int)
-
-
 class HierarchyStructure(object):
 
     """Structure for the given number of modes and truncation criteria.
@@ -86,29 +64,29 @@ class HierarchyStructure(object):
         self._recursive_indices((), 0)
 
         self.vecind = np.asarray(self.vecind, dtype=int)
-        self.indab, self.indbl = _lookup_coupling_indices(self.vecind)
+        self.indab, self.indbl = self._lookup_coupling_indices()
 
-    def _recursive_indices(self, k, currPop):
-        """Recursively construct the hierachy.
+    def _recursive_indices(self, k, curr_pop):
+        """Recursively construct the hierachy in self.vecind
 
         k       -- Tuple with already determined entries.
-        currPop -- Number of currently "populated" modes.
+        curr_pop -- Number of currently "populated" modes.
 
         Usage (to construct full hierarchy): `self._recursive_indices((), 0)`
         """
         if len(k) >= self._modes - 1:
             self._add(k + (0,))
         else:
-            self._recursive_indices(k + (0,), currPop)
+            self._recursive_indices(k + (0,), curr_pop)
 
-        if currPop >= self._pop_modes:
+        if curr_pop >= self._pop_modes:
             return
 
         for i in xrange(1, self._depth - sum(k) + 1):
             if len(k) >= self._modes - 1:
                 self._add(k + (i,))
             else:
-                self._recursive_indices(k + (i,), currPop + 1)
+                self._recursive_indices(k + (i,), curr_pop + 1)
 
     def _add(self, k):
         """Adds the vector index `k` to the hierarchy structure if it does not
@@ -118,6 +96,25 @@ class HierarchyStructure(object):
         """
         if all(np.asarray(k) <= self._cutoff):
             self.vecind.append(k)
+
+    def _lookup_coupling_indices(self):
+        """Create indices for coupling above/below in the hierarchy.
+        `indab[i, j]` is the integer-index corresponding to the vector index
+        `vecind[i] + e_j`.
+        """
+        iind = dict(izip([tuple(x) for x in self.vecind],
+                         range(self.vecind.shape[0])))
+        e = np.identity(self.vecind.shape[1], dtype=int)
+        indab = np.empty(self.vecind.shape, dtype=int)
+        indbl = np.empty(self.vecind.shape, dtype=int)
+
+        for i, k in enumerate(self.vecind):
+            indab[i] = np.asarray([iind.get(tuple(kp), INVALID_INDEX)
+                                   for kp in k + e], dtype=int)
+            indbl[i] = np.asarray([iind.get(tuple(km), INVALID_INDEX)
+                                   for km in k - e], dtype=int)
+
+        return indab, indbl
 
     def __str__(self):
         rep = []

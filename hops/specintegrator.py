@@ -27,12 +27,13 @@ from __future__ import division, print_function
 
 import numpy as np
 from numpy import complex128 as complex_t, float64 as float_t
-from scipy.sparse import lil_matrix as LILMatrix
+from scipy.sparse import csr_matrix as CSRMatrix
 from itertools import izip
 from scipy.integrate import ode
 
 from hops.hstruct import HierarchyStructure, INVALID_INDEX
 from hops.libhint import hint
+import hops.hconstruct as hcons
 import hops.specfun as specfun
 
 
@@ -67,6 +68,8 @@ class SpectrumHierarchyIntegrator(object):
         self._with_terminator = with_terminator
 
         self._prop = self._setup_linear_propagator()
+        self._prop.sum_duplicates()
+        self._prop.eliminate_zeros()
 
     def _setup_linear_propagator(self):
         """Sets up the noise-independent, linear propagator
@@ -74,33 +77,42 @@ class SpectrumHierarchyIntegrator(object):
         Returns:
         The propagator as CSR Matrix
         """
-        dim = self._h_sys.shape[0]
-        nr_aux = self._struct.entries
-        size = dim * nr_aux
-        w = (self._gamma + 1.j * self._omega).astype(complex_t)
+        I, J, A = hcons.setup_linear_propagator(self._struct.vecind,
+                                                self._struct.indab,
+                                                self._struct.indbl,
+                                                self._h_sys,
+                                                self._g,
+                                                self._gamma + 1.j*self._omega,
+                                                self._l_map,
+                                                self._with_terminator)
+        return CSRMatrix((A, J, I))
+        # dim = self._h_sys.shape[0]
+        # nr_aux = self._struct.entries
+        # size = dim * nr_aux
+        # w = (self._gamma + 1.j * self._omega).astype(complex_t)
 
-        prop = LILMatrix((size, size), dtype=complex_t)
+        # prop = LILMatrix((size, size), dtype=complex_t)
 
-        for ent in xrange(nr_aux):
-            k = self._struct.vecind[ent]
-            prop[ent * dim:(ent+1) * dim, ent * dim:(ent+1) * dim] \
-                    = -1.j * self._h_sys - np.dot(k, w) * np.identity(dim)
+        # for ent in xrange(nr_aux):
+        #     k = self._struct.vecind[ent]
+        #     prop[ent * dim:(ent+1) * dim, ent * dim:(ent+1) * dim] \
+        #             = -1.j * self._h_sys - np.dot(k, w) * np.identity(dim)
 
-            mode_iter = enumerate(izip(self._l_map, self._g, self._gamma,
-                                       self._omega))
-            for mode, (l, g, gamma, omega) in mode_iter:
-                ind = self._struct.indbl[ent, mode]
-                if ind != INVALID_INDEX:
-                    prop[dim * ent + l, dim * ind + l] += k[mode] * g
+        #     mode_iter = enumerate(izip(self._l_map, self._g, self._gamma,
+        #                                self._omega))
+        #     for mode, (l, g, gamma, omega) in mode_iter:
+        #         ind = self._struct.indbl[ent, mode]
+        #         if ind != INVALID_INDEX:
+        #             prop[dim * ent + l, dim * ind + l] += k[mode] * g
 
-                ind = self._struct.indab[ent, mode]
-                if ind != INVALID_INDEX:
-                    prop[dim * ent + l, dim * ind + l] += -1.
-                elif self._with_terminator:
-                    for ent_t, mode_t, val_t in self._terminator(ent, mode):
-                        prop[dim * ent + self._l_map[mode_t],
-                             dim * ent_t + self._l_map[mode_t]] += val_t
-        return prop.tocsr()
+        #         ind = self._struct.indab[ent, mode]
+        #         if ind != INVALID_INDEX:
+        #             prop[dim * ent + l, dim * ind + l] += -1.
+        #         elif self._with_terminator:
+        #             for ent_t, mode_t, val_t in self._terminator(ent, mode):
+        #                 prop[dim * ent + self._l_map[mode_t],
+        #                      dim * ent_t + self._l_map[mode_t]] += val_t
+        # return prop.tocsr()
 
     def _terminator(self, iind, mode):
         """Returns the terminator replacement for psi[k + e_mode], where
@@ -238,7 +250,8 @@ def simple_spectrum_hierarchy(depth, g, gamma, omega, h_sys, **kwargs):
 
     """
     dim = np.shape(h_sys)[0]
-    struct = HierarchyStructure(len(g) * dim, depth)
+    with Timer('Structure'):
+        struct = HierarchyStructure(len(g) * dim, depth)
     bath = {'g': [g for _ in range(dim)],
             'gamma': [gamma for _ in range(dim)],
             'Omega': [omega for _ in range(dim)]}
@@ -247,9 +260,8 @@ def simple_spectrum_hierarchy(depth, g, gamma, omega, h_sys, **kwargs):
 
 if __name__ == '__main__':
     from timer import Timer
-    with Timer():
-        hier = simple_spectrum_hierarchy(5, [1, 1], [2, 2], [3, 3],
-                                         np.zeros([7, 7]))
+    hier = simple_spectrum_hierarchy(5, [1, 1], [2, 2], [3, 3],
+                                     np.zeros([7, 7]))
     print(hier._struct.entries)
     # with Timer('Extern'):
     #     hier.get_trajectory(100, 20000, extern=True)
