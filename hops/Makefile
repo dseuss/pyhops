@@ -4,8 +4,11 @@ INCMKL := -I$(MKLROOT)/include -fPIC -O3
 LDMKL :=  -L$(MKLROOT)/lib/intel64  -lmkl_rt -lpthread -lm
 
 
-default: hconstruct.so
+default: hconstruct.so libhint.so
 # default: libhint.so
+
+main: system.o todeint.o hint.o main.o
+	$(FORTRAN) -o main $^ $(LDMKL)
 
 libhint.so: libhint.pyf system.o todeint.o hint.o
 	f2py -c $(LDMKL) --fcompiler=intelem $^
