@@ -7,3 +7,4 @@
 bin
 hops/main
 hops/main.f90
+hops/hconstruct.cpp

@@ -9,12 +9,12 @@ contains
 subroutine calc_trajectory_lin(t_length, t_steps, dim_hs, nr_eq, psi0, psi, &
          lin_nnz, lin_i, lin_j, lin_a)
    implicit none
-   real(dp), intent(in)     :: t_length
-   integer(ki), intent(in)  :: t_steps
-   integer(ki), intent(in)  :: dim_hs
-   integer(ki), intent(in)  :: nr_eq
-   complex(dp), intent(in)  :: psi0(nr_eq)
-   complex(dp), intent(out) :: psi(dim_hs, t_steps)
+   real(dp), intent(in)       :: t_length
+   integer(ki), intent(in)    :: t_steps
+   integer(ki), intent(in)    :: dim_hs
+   integer(ki), intent(in)    :: nr_eq
+   complex(dp), intent(inout) :: psi0(nr_eq)
+   complex(dp), intent(out)   :: psi(dim_hs, t_steps)
 
    ! Linear propagator as sparse matrix
    integer(ki), intent(in) :: lin_nnz
