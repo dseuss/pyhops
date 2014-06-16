@@ -86,81 +86,11 @@ class SpectrumHierarchyIntegrator(object):
                                                 self._l_map,
                                                 self._with_terminator)
         csr = CSRMatrix((a, j, i))
+        print('Vorher: {}'.format(csr.nnz))
         csr.sum_duplicates()
         csr.eliminate_zeros()
+        print('Nachher: {}'.format(csr.nnz))
         return csr
-
-        # dim = self._h_sys.shape[0]
-        # nr_aux = self._struct.entries
-        # size = dim * nr_aux
-        # w = (self._gamma + 1.j * self._omega).astype(complex_t)
-
-        # prop = LILMatrix((size, size), dtype=complex_t)
-
-        # for ent in xrange(nr_aux):
-        #     k = self._struct.vecind[ent]
-        #     prop[ent * dim:(ent+1) * dim, ent * dim:(ent+1) * dim] \
-        #             = -1.j * self._h_sys - np.dot(k, w) * np.identity(dim)
-
-        #     mode_iter = enumerate(zip(self._l_map, self._g, self._gamma,
-        #                                self._omega))
-        #     for mode, (l, g, gamma, omega) in mode_iter:
-        #         ind = self._struct.indbl[ent, mode]
-        #         if ind != INVALID_INDEX:
-        #             prop[dim * ent + l, dim * ind + l] += k[mode] * g
-
-        #         ind = self._struct.indab[ent, mode]
-        #         if ind != INVALID_INDEX:
-        #             prop[dim * ent + l, dim * ind + l] += -1.
-        #         # elif self._with_terminator:
-        #         #     for ent_t, mode_t, val_t in self._terminator(ent, mode):
-        #         #         prop[dim * ent + self._l_map[mode_t],
-        #         #              dim * ent_t + self._l_map[mode_t]] += val_t
-        # prop.tocsr()
-
-        # # return prop.tocsr()
-
-    # def _terminator(self, iind, mode):
-    #     """Returns the terminator replacement for psi[k + e_mode], where
-    #     k = vecind[iind]:
-    #             psi[k+e_j] = sum_i (k+e_j)_i g_i / dot(k+e_j, w)        (*)
-    #                                    * l_map[i] psi[k+e_j-e_i]
-
-    #     iind -- Integer index for the current aux state (k)
-    #     mode -- Mode for which k is increased by one
-
-    #     Returns:
-    #     List of tuples (iind_t, mode_t, val_t), where
-    #     iind_t -- Integer index for (k + e_j - e_i) (j=mode, i=mode_t)
-    #     mode_t -- Mode which is subtracted from (k + e_j)
-    #     val_t  -- Prefactor for terminator (i.e. everything in the first line
-    #               of (*))
-    #     """
-    #     # TODO Remake with dict lookup
-    #     nr_modes = len(self._g)
-    #     res = []
-    #     w = self._gamma + 1.j * self._omega
-    #     e = np.zeros(nr_modes, dtype=complex_t)
-    #     e[mode] = 1
-    #     prefac = lambda k, i: -(k[i] + e[i]) * self._g[i] / np.dot(k + e, w)
-
-    #     for mode_t in xrange(nr_modes):
-    #         if mode_t == mode:
-    #             res.append((iind, mode, prefac(self._struct.vecind[iind],
-    #                                            mode)))
-    #             continue
-
-    #         if self._struct.indbl[iind, mode_t] == INVALID_INDEX:
-    #             continue
-
-    #         iind_t = self._struct.indab[self._struct.indbl[iind, mode_t], mode]
-    #         if iind_t == INVALID_INDEX:
-    #             continue
-
-    #         res.append((iind_t, mode_t, prefac(self._struct.vecind[iind],
-    #                                            mode_t)))
-
-    #     return res
 
     def get_trajectory(self, t_length, t_steps, psi0=None):
         """Calculates the solution of the linear hierarchy without noise
