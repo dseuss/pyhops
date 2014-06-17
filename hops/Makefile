@@ -4,7 +4,7 @@ INCMKL := -I$(MKLROOT)/include -fPIC -O3
 LDMKL :=  -L$(MKLROOT)/lib/intel64  -lmkl_rt -lpthread -lm
 
 
-default: hconstruct.so libhint.so
+default: hconstruct.so libhint.so timedepsparse.so
 # default: libhint.so
 
 main: system.o todeint.o hint.o main.o
