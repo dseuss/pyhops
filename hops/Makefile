@@ -13,7 +13,7 @@ main: system.o todeint.o hint.o main.o
 libhint.so: libhint.pyf system.o todeint.o hint.o
 	f2py -c $(LDMKL) --fcompiler=intelem $^
 libhint.pyf: hint.f90
-	f2py --overwrite-signature -m libhint -h libhint.pyf hint.f90
+	f2py --overwrite-signature -m libhint -h libhint.pyf hint.f90 skip: timedep_csr_matvec :
 %.o: %.f90
 	$(FORTRAN) $(INCMKL) -c $^
 
@@ -48,5 +48,4 @@ LDPY := -lgsl -lgslcblas -lm -fopenmp
 
 ###############################################################################
 clean:
-	rm -vf *.o *.mod *.pyf *.so main *.pyc
-
+	rm -vf *.o *.mod *.pyf *.so main *.pyc hconstruct.cpp

@@ -4,10 +4,14 @@ use todeint, only: zintegrate_rk4
 implicit none
 include 'mkl_spblas.fi'
 
+character, parameter :: TRANS = 'n'
+
+
 contains
 
 subroutine calc_trajectory_lin(t_length, t_steps, dim_hs, nr_eq, psi0, psi, &
-         lin_nnz, lin_i, lin_j, lin_a)
+         lin_nnz, lin_i, lin_j, lin_a, &
+         noise_nnz, nr_noise, noise_i, noise_j, noise_a, noise)
    implicit none
    real(dp), intent(in)       :: t_length
    integer(ki), intent(in)    :: t_steps
@@ -22,12 +26,15 @@ subroutine calc_trajectory_lin(t_length, t_steps, dim_hs, nr_eq, psi0, psi, &
    integer(ki), intent(in) :: lin_j(lin_nnz)
    complex(dp), intent(in) :: lin_a(lin_nnz)
 
-   complex(dp), allocatable :: dummy(:, :)
+   ! Propagator proportional to ~ Z_t and Z_t
+   integer(ki), intent(in) :: noise_nnz
+   integer(ki), intent(in) :: nr_noise
+   integer(ki), intent(in) :: noise_i(nr_eq + 1)
+   integer(ki), intent(in) :: noise_j(noise_nnz)
+   integer(ki), intent(in) :: noise_a(noise_nnz)
+   complex(dp), intent(in) :: noise(nr_noise, 2 * t_steps)
 
-   allocate(dummy(0, 2*t_steps))
-   dummy = 0._dp
-
-   psi = zintegrate_rk4(rhs, t_length, t_steps, dummy, psi0, dim_hs)
+   psi = zintegrate_rk4(rhs, t_length, t_steps, noise, psi0, dim_hs)
 contains
 
    subroutine rhs(y, f, ydot)
@@ -36,12 +43,42 @@ contains
       complex(dp), intent(in) :: f(:)
       complex(dp), intent(out) :: ydot(:)
 
-      character, parameter :: trans = 'n'
-
-      call mkl_cspblas_zcsrgemv(trans, nr_eq, lin_a, lin_i, lin_j, y, ydot)
-      ! TODO Add noise terms
+      call mkl_cspblas_zcsrgemv(TRANS, nr_eq, lin_a, lin_i, lin_j, y, ydot)
+      if (nr_noise /= 0) then
+         call timedep_csr_matvec(noise_i, noise_j, noise_a, f, y, ydot)
+      endif
    end subroutine rhs
 
 end subroutine calc_trajectory_lin
+
+
+subroutine timedep_csr_matvec(i_csr, j_csr, a_csr, f, x, y, c_csr)
+   ! Compute y += A(f).x for CSR matrix A and dense vectors x, y
+   implicit none
+   integer(ki), intent(in)           :: i_csr(:)
+   integer(ki), intent(in)           :: j_csr(:)
+   integer(ki), intent(in)           :: a_csr(:)
+   complex(dp), intent(in)           :: f(:)
+   complex(dp), intent(in)           :: x(:)
+   complex(dp), intent(inout)        :: y(:)
+   complex(dp), intent(in), optional :: c_csr(:)
+
+   integer :: i, j
+
+   if (present(c_csr)) then
+      do i = 1, size(i_csr) - 1
+         do j = i_csr(i) + 1, i_csr(i+1)
+            y(i) = y(i) + c_csr(j) * f(a_csr(j)) * x(j_csr(j) + 1)
+         end do
+      end do
+
+   else
+      do i = 1, size(i_csr) - 1
+         do j = i_csr(i) + 1, i_csr(i+1)
+            y(i) = y(i) + f(a_csr(j)) * x(j_csr(j) + 1)
+         end do
+      end do
+   end if
+end subroutine timedep_csr_matvec
 
 end module hint

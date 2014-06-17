@@ -27,11 +27,10 @@ from __future__ import division, print_function
 
 import numpy as np
 from numpy import complex128 as complex_t, float64 as float_t
-from scipy.sparse import csr_matrix as CSRMatrix, lil_matrix as LILMatrix
-from scipy.integrate import ode
+from scipy.sparse import csr_matrix as CSRMatrix
 
-from hops.hstruct import HierarchyStructure, INVALID_INDEX
 from hops.libhint import hint
+from hops.hstruct import HierarchyStructure
 import hops.hconstruct as hcons
 import hops.specfun as specfun
 
@@ -85,11 +84,10 @@ class SpectrumHierarchyIntegrator(object):
                                                 self._gamma + 1.j*self._omega,
                                                 self._l_map,
                                                 self._with_terminator)
+
         csr = CSRMatrix((a, j, i))
-        print('Vorher: {}'.format(csr.nnz))
         csr.sum_duplicates()
         csr.eliminate_zeros()
-        print('Nachher: {}'.format(csr.nnz))
         return csr
 
     def get_trajectory(self, t_length, t_steps, psi0=None):
@@ -109,6 +107,8 @@ class SpectrumHierarchyIntegrator(object):
         Returns:
         psi[t_steps, dim] -- Trajectory for Z_t = 0
         """
+        print(t_length)
+        print(t_steps)
         dim = self._h_sys.shape[0]
         if psi0 is None:
             psi0 = np.ones(dim, dtype=complex_t) / np.sqrt(dim)
@@ -118,10 +118,23 @@ class SpectrumHierarchyIntegrator(object):
         elif psi0.size != self.nr_equations:
             raise RuntimeError("specintegrator.py:get_trajectory: psi0 has wrong shape")
 
-        psi = hint.calc_trajectory_lin(t_length, t_steps, dim, psi0,
+        psi = hint.calc_trajectory_lin(t_length,
+                                       dim,
+                                       psi0,
+
                                        self._prop.indptr,
                                        self._prop.indices,
-                                       self._prop.data)
+                                       self._prop.data,
+
+                                       np.empty(self.nr_equations + 1,
+                                                dtype=np.int),
+                                       # Not sure why this works
+                                       np.empty(0, dtype=np.int),
+                                       np.empty(1, dtype=np.int),
+                                       np.empty((0, 2*t_steps),
+                                                dtype=np.complex128)
+                                       )
+        print('Done')
         return np.transpose(psi)
 
     def get_spectrum(self, dw, t_steps, psi0=None, wmin=None, wmax=None,
