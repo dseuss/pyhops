@@ -4,7 +4,7 @@ from __future__ import division, print_function
 import numpy as np
 cimport numpy as np
 from numpy import int, complex128
-from numpy cimport int_t, complex128_t as complex_t
+from numpy cimport int_t, float64_t as float_t, complex128_t as complex_t
 import scipy.sparse as sparse
 from libcpp.vector cimport vector
 from libcpp cimport bool
@@ -71,12 +71,13 @@ def setup_linear_propagator(np.ndarray[int_t, ndim=2, mode='c'] vecind,
     cdef int_t couplind
 
 
-    cdef np.ndarray[np.int_t, ndim=1] k
+    cdef np.ndarray[int_t, ndim=1] k
+    cdef np.ndarray[float_t, ndim=2, mode='c'] identity = np.identity(dim)
 
     for iind in range(nr_aux):
         k = vecind[iind]
         _add_block(i_coo, j_coo, a_coo, iind, iind,
-                   -1.j * h_sys - np.dot(k, w) * np.identity(dim))
+                   -1.j * h_sys - np.dot(k, w) * identity)
 
         for mode in range(nr_modes):
             couplind = indbl[iind, mode]
