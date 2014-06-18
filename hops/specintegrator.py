@@ -26,7 +26,7 @@ The spectrum-hierarchy integrates the linear NMSSE hierarchy with no noise
 from __future__ import division, print_function
 
 import numpy as np
-from numpy import complex128 as complex_t, float64 as float_t
+from numpy import complex128 as complex_t, float64 as float_t, int as int_t
 from scipy.sparse import csr_matrix as CSRMatrix
 
 from hops.libhint import hint
@@ -63,12 +63,17 @@ class SpectrumHierarchyIntegrator(object):
                                 for i, g in enumerate(bath['g'])]).astype(int)
         self._h_sys = np.asarray(h_sys, dtype=complex_t)
         self._with_terminator = with_terminator
+        self._nr_aux_states = struct.entries
 
         self._prop = self._setup_linear_propagator(struct)
 
     @property
-    def nr_equations(self):
+    def nr_aux_states(self):
         return self._prop.shape[0]
+
+    @property
+    def nr_aux_states(self):
+        return self.nr_aux_states
 
     def _setup_linear_propagator(self, struct):
         """Sets up the noise-independent, linear propagator
@@ -98,7 +103,7 @@ class SpectrumHierarchyIntegrator(object):
 
         Keyword arguments:
         psi0[dim] -- initial state of the system (default [1,1,...]/sqrt(dim))
-                     (alternatively pass array of size self.nr_equations and
+                     (alternatively pass array of size self.nr_aux_states and
                       dype complex_t, which is used as computing state. After
                       propagation it contains the full hierarchy state, which
                       can be used to continue propagation.)
@@ -107,32 +112,33 @@ class SpectrumHierarchyIntegrator(object):
         Returns:
         psi[t_steps, dim] -- Trajectory for Z_t = 0
         """
-        print(t_length)
-        print(t_steps)
         dim = self._h_sys.shape[0]
         if psi0 is None:
             psi0 = np.ones(dim, dtype=complex_t) / np.sqrt(dim)
         if psi0.size == dim:
-            psi0 = np.append(psi0, np.zeros(self.nr_equations - dim,
+            psi0 = np.append(psi0, np.zeros(self.nr_aux_states - dim,
                                             dtype=complex_t))
-        elif psi0.size != self.nr_equations:
+        elif psi0.size != self.nr_aux_states:
             raise RuntimeError("specintegrator.py:get_trajectory: psi0 has wrong shape")
 
-        psi = hint.calc_trajectory_lin(t_length,
-                                       dim,
-                                       psi0,
+        psi = hint.calc_trajectory_lin(t_length=t_length,
+                                       t_steps=t_steps,
+                                       dim_hs=dim,
+                                       nr_aux_states=self.nr_aux_states,
+                                       nr_noise=0,
+                                       psi0=psi0,
 
-                                       self._prop.indptr,
-                                       self._prop.indices,
-                                       self._prop.data,
+                                       lin_i=self._prop.indptr,
+                                       lin_j=self._prop.indices,
+                                       lin_a=self._prop.data,
 
-                                       np.empty(self.nr_equations + 1,
-                                                dtype=np.int),
-                                       # Not sure why this works
-                                       np.empty(0, dtype=np.int),
-                                       np.empty(1, dtype=np.int),
-                                       np.empty((0, 2*t_steps),
-                                                dtype=np.complex128)
+                                       noise_i=np.empty(self.nr_aux_states + 1,
+                                                        dtype=int_t),
+                                       noise_j=np.empty(0, dtype=int_t),
+                                       noise_a=np.empty(1, dtype=int_t),
+                                       noise_c=np.empty(1, dtype=complex_t),
+                                       noise=np.empty((0, 2*t_steps),
+                                                        dtype=complex_t)
                                        )
         print('Done')
         return np.transpose(psi)
