@@ -21,6 +21,7 @@ import scipy.sparse as sp
 from itertools import izip
 
 import physics.qustat as qs
+import mhops.fermionic as fm
 from tools.sci import zodeint
 
 
@@ -97,8 +98,8 @@ def analytic_rho12(t, psi0, omega, strength):
 if __name__ == '__main__':
     sigma_z = np.diag((1, -1))
     sigma_m = np.array([[0, 0], [1, 0]])
-    prop = -1.j * full_hamiltonian(.5 * sigma_z, sigma_m, [1.], [10.])
-    t, dt = np.linspace(0, 10, 1000, retstep=True)
+    prop = -1.j * full_hamiltonian(.5 * sigma_z, sigma_m, [1.], [1.])
+    t, dt = np.linspace(0, 1, 1000, retstep=True)
     psi_0_sys = [.6, .8]
     psi0 = full_state(psi_0_sys, 1).astype(complex)
     t, psi = zodeint(lambda t, y: prop.dot(y), psi0, t,
@@ -107,6 +108,15 @@ if __name__ == '__main__':
     rho = np.asarray([reduced_rho(psi_t, 2) for psi_t in psi])
     print(rho.shape)
 
-    pl.plot(t, np.real(rho[:, 0, 0]))
-    pl.plot(t, np.real(rho[:, 1, 1]))
+    cl = ['r', 'b']
+    for i in range(2):
+        pl.plot(t, np.real(rho[:, i, i]), ls='--', color=cl[i])
+
+    trace = lambda rho: np.sum(np.diagonal(rho, axis1=1, axis2=2), axis=1)
+    meq = fm.FermionicIntegrator({'g': [[1.]], 'gamma': [[0.]], 'Omega': [[1.]]},
+                                 .5 * sigma_z, couplops=[sigma_m])
+    t, rho = meq.get_rho(dt, t[-1], psi0=np.array(psi_0_sys))
+    rho /= trace(rho)[:, None, None]
+    for i in range(2):
+        pl.plot(t, np.real(rho[:, i, i]), ls=':', color=cl[i])
     pl.show()

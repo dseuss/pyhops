@@ -48,7 +48,7 @@ class MasterIntegrator(object):
 
     """Docstring for MasterEqIntegrator. """
 
-    def __init__(self, bath, h_sys):
+    def __init__(self, bath, h_sys, couplops):
         """@todo: Docstring for __init__.
 
         bath -- TODO
@@ -56,16 +56,14 @@ class MasterIntegrator(object):
         Returns:
 
         """
-        self._g = np.ravel(bath.get('g')).astype(complex_t)
-        self._gamma = np.ravel(bath.get('gamma')).astype(float_t)
-        self._omega = np.ravel(bath.get('Omega')).astype(float_t)
+        self._g = np.ravel(bath['g']).astype(complex_t)
+        self._gamma = np.ravel(bath['gamma']).astype(float_t)
+        self._omega = np.ravel(bath['Omega']).astype(float_t)
         self._modes = self._g.size
         self._l_map = np.ravel([np.ones(len(g), dtype=int_t) * i
                                 for i, g in enumerate(bath['g'])])
         self._h_sys = np.ascontiguousarray(h_sys, dtype=complex_t)
-        self._l = np.zeros((self.dim_hs, ) * 3)
-        for i in range(self.dim_hs):
-            self._l[i, i, i] = 1.
+        self._l = np.asarray(couplops)
 
         self._nr_aux_states = None
         self._prop = None
