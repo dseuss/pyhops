@@ -3,7 +3,7 @@
 
 from __future__ import division, print_function
 import numpy as np
-from mhops.master import commutator
+from mhops._base import commutator
 
 
 def test_commutator():
