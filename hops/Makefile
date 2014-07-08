@@ -4,7 +4,7 @@ INCMKL := -I$(MKLROOT)/include -fPIC -O3
 LDMKL :=  -L$(MKLROOT)/lib/intel64  -lmkl_rt -lpthread -lm
 
 
-default: hconstruct.so libhint.so timedepsparse.so
+default: hconstruct.so libhint.so timedepsparse.so tools.so
 # default: libhint.so
 
 main: system.o todeint.o hint.o main.o
@@ -33,8 +33,8 @@ LINKFORSHARED := $(shell $(PYTHON) -c "import distutils.sysconfig; print(distuti
 LIBS := $(shell $(PYTHON) -c "import distutils.sysconfig; print(distutils.sysconfig.get_config_var('LIBS'))")
 SYSLIBS := $(shell $(PYTHON) -c "import distutils.sysconfig; print(distutils.sysconfig.get_config_var('SYSLIBS'))")
 
-PYCFLAGS := -w -O3 -fPIC -fopenmp -std=c++11
-LDPY := -lgsl -lgslcblas -lm -fopenmp
+PYCFLAGS := -w -O3 -fPIC -fopenmp
+LINKFLAGS := -fopenmp
 
 
 
@@ -48,4 +48,4 @@ LDPY := -lgsl -lgslcblas -lm -fopenmp
 
 ###############################################################################
 clean:
-	rm -vf *.o *.mod *.pyf *.so main *.pyc hconstruct.cpp
+	rm -vf *.o *.mod *.pyf *.so main *.pyc *.cpp
