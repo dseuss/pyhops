@@ -93,7 +93,7 @@ class MasterEqIntegrator(object):
         """
         prop = sparse.lil_matrix((self.dim_aux, self.dim_aux), dtype=complex_t)
         dim_rho = self.dim_hs**2
-        w = self._g + 1.j * self._omega
+        w = self._gamma + 1.j * self._omega
 
         for iind in xrange(self.nr_aux_states):
             base = iind * dim_rho
