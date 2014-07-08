@@ -44,7 +44,8 @@ class HierarchyStructure(object):
     def entries(self):
         return len(self.vecind)
 
-    def __init__(self, modes, depth, pop_modes=None, cutoff=None):
+    def __init__(self, modes, depth, pop_modes=None, cutoff=None,
+                 mode='triangular'):
         """
         modes -- Number of modes
         depth -- Depth of the hierarchy
@@ -61,32 +62,39 @@ class HierarchyStructure(object):
                                    for k in cutoff])
 
         self.vecind = list()
-        self._recursive_indices((), 0)
+        self._recursive_indices((), 0, mode)
 
         self.vecind = np.asarray(self.vecind, dtype=int)
         self.indab, self.indbl = self._lookup_coupling_indices()
 
-    def _recursive_indices(self, k, curr_pop):
+    def _recursive_indices(self, k, curr_pop, mode):
         """Recursively construct the hierachy in self.vecind
 
-        k       -- Tuple with already determined entries.
+        k        -- Tuple with already determined entries.
         curr_pop -- Number of currently "populated" modes.
+
+        Keyword arguments:
+        mode -- Either 'triangular' or 'quadratic'
 
         Usage (to construct full hierarchy): `self._recursive_indices((), 0)`
         """
         if len(k) >= self._modes - 1:
             self._add(k + (0,))
         else:
-            self._recursive_indices(k + (0,), curr_pop)
+            self._recursive_indices(k + (0,), curr_pop, mode)
 
         if curr_pop >= self._pop_modes:
             return
 
-        for i in xrange(1, self._depth - sum(k) + 1):
+        # FIXME This might be quite slow
+        limit = {'triangular': self._depth - sum(k) + 1,
+                 'quadratic': self._depth + 1}[mode]
+
+        for i in xrange(1, limit):
             if len(k) >= self._modes - 1:
                 self._add(k + (i,))
             else:
-                self._recursive_indices(k + (i,), curr_pop + 1)
+                self._recursive_indices(k + (i,), curr_pop + 1, mode)
 
     def _add(self, k):
         """Adds the vector index `k` to the hierarchy structure if it does not

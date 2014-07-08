@@ -135,3 +135,65 @@ def test_coupling():
     assert INVALID_INDEX == H.indab[i, 1]
     assert (2, 0) == tuple(H.vecind[H.indbl[i, 0]])
     assert INVALID_INDEX == H.indbl[i, 1]
+
+
+
+def test_quad_completeness():
+    H = HierarchyStructure(2, 2, mode='quadratic')
+    vecind = [tuple(k) for k in H.vecind]
+
+    assert (0, 0) in vecind
+    assert (0, 1) in vecind
+    assert (0, 2) in vecind
+
+    assert (1, 0) in vecind
+    assert (1, 1) in vecind
+    assert (1, 2) in vecind
+
+    assert (2, 0) in vecind
+    assert (2, 1) in vecind
+    assert (2, 2) in vecind
+
+    assert (1, 3) not in vecind
+    assert (0, 8) not in vecind
+    assert (4, 3) not in vecind
+
+    assert H.entries == 9
+
+
+def test_quad_limited():
+    H = HierarchyStructure(3, 2, pop_modes=2, mode='quadratic')
+    vecind = [tuple(k) for k in H.vecind]
+
+    assert (0, 0, 0) in vecind
+    assert (0, 0, 1) in vecind
+    assert (0, 0, 2) in vecind
+    #-------------------------
+    assert (0, 1, 0) in vecind
+    assert (0, 1, 1) in vecind
+    assert (0, 1, 2) in vecind
+
+    assert (0, 2, 0) in vecind
+    assert (0, 2, 1) in vecind
+    assert (0, 2, 2) in vecind
+    #-------------------------
+    assert (1, 0, 0) in vecind
+    assert (1, 0, 1) in vecind
+    assert (1, 0, 2) in vecind
+
+    assert (2, 0, 0) in vecind
+    assert (2, 0, 1) in vecind
+    assert (2, 0, 2) in vecind
+    #-------------------------
+    assert (1, 1, 0) in vecind
+    assert (1, 2, 0) in vecind
+
+    assert (2, 1, 0) in vecind
+    assert (2, 2, 0) in vecind
+    #-------------------------
+
+    assert (1, 1, 1) not in vecind
+    assert (2, 1, 1) not in vecind
+    assert (0, 1, 4) not in vecind
+
+    assert H.entries == 19
