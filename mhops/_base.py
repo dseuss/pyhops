@@ -48,10 +48,9 @@ class MasterIntegrator(object):
 
     """Docstring for MasterEqIntegrator. """
 
-    def __init__(self, depth, bath, h_sys):
+    def __init__(self, bath, h_sys):
         """@todo: Docstring for __init__.
 
-        depth -- TODO
         bath -- TODO
         h_sys -- TODO
         Returns:

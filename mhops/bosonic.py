@@ -15,10 +15,10 @@ class BosonicIntegrator(MasterIntegrator):
 
     def __init__(self, depth, bath, h_sys):
         """@todo: to be defined1. """
-        MasterIntegrator.__init__(self)
+        MasterIntegrator.__init__(self, bath, h_sys)
 
         struct = HierarchyStructure(2 * self._modes, depth)
-        self._nr_aux_states = struct.entries()
+        self._nr_aux_states = struct.entries
         self._prop = self._setup_propagator(struct)
 
     def _setup_propagator(self, struct):
