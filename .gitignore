@@ -3,6 +3,8 @@
 *.o
 *.so
 *.pyf
+*.cgrind
+*.prof
 
 bin
 hops/main
