@@ -10,7 +10,7 @@ The full Hamiltonian reads
 with fermionic ladder operators {d_i, d†_j} = δ_ij. Here, we assume that
 system and bath are distinguishable. For details see [1, IV].
 
-[1] Shi, Zhao, Yu: Non-Markovian Fermionic Stochastic Schrödinger Equation for
+[1] Shi, Zhao, Yu: Non-Markovian Fermionic Stochastic Schroedinger Equation for
     Open System Dynamics; arXiv:1203.2219 [quant-ph]
 """
 
@@ -96,27 +96,58 @@ def analytic_rho12(t, psi0, omega, strength):
 
 
 if __name__ == '__main__':
-    sigma_z = np.diag((1, -1))
+    h_sys = 4 * np.diag((1, -1))
+    sigma_x = np.array([[0, 1], [1, 0]])
+    sigma_z = np.array([[1, 0], [0, -1]])
     sigma_m = np.array([[0, 0], [1, 0]])
-    prop = -1.j * full_hamiltonian(.5 * sigma_z, sigma_m, [1.], [1.])
-    t, dt = np.linspace(0, 1, 1000, retstep=True)
-    psi_0_sys = [.6, .8]
-    psi0 = full_state(psi_0_sys, 1).astype(complex)
-    t, psi = zodeint(lambda t, y: prop.dot(y), psi0, t,
+    g = [1.]
+    omega = [2.]
+    cl = ['r', 'g']
+    t, dt = np.linspace(0, 10, 1000, retstep=True)
+    psi_0_sys = np.asarray([.6, .8])
+
+    def plot(t, rho, **kwargs):
+        for i in range(2):
+            pl.plot(t, np.real(rho[:, i, i]), color=cl[i], **kwargs)
+        # pl.plot(t, np.real(rho[:, 0, 1]), color=cl[0], **kwargs)
+        # pl.plot(t, np.imag(rho[:, 0, 1]), color=cl[1], **kwargs)
+
+    # Analytic solution #######################################################
+    # pl.plot(t, np.real(analytic_rho12(t, psi_0_sys, omega[0], g[0])),
+    #         lw=2, color='k')
+    # pl.plot(t, np.imag(analytic_rho12(t, psi_0_sys, omega[0], g[0])),
+    #         lw=2, color='k')
+
+    # Full Hilbert space solution #############################################
+    prop = -1.j * full_hamiltonian(.5 * h_sys, sigma_m, omega, g)
+    psi0 = full_state(psi_0_sys, len(g)).astype(complex)
+    _, psi = zodeint(lambda t, y: prop.dot(y), psi0, t,
                      rtol=10e-10, atol=10e-10)
-
     rho = np.asarray([reduced_rho(psi_t, 2) for psi_t in psi])
-    print(rho.shape)
+    plot(t, rho, ls='--')
 
-    cl = ['r', 'b']
-    for i in range(2):
-        pl.plot(t, np.real(rho[:, i, i]), ls='--', color=cl[i])
+    # Manual hierarchy test ###################################################
+    _, rho = fm._testcase_one_mode(.5 * h_sys,
+                                   np.conj(psi_0_sys)[:, None] * psi_0_sys[None, :],
+                                   g[0],
+                                   1.j * omega[0],
+                                   sigma_m,
+                                   t)
 
-    trace = lambda rho: np.sum(np.diagonal(rho, axis1=1, axis2=2), axis=1)
-    meq = fm.FermionicIntegrator({'g': [[1.]], 'gamma': [[0.]], 'Omega': [[1.]]},
-                                 .5 * sigma_z, couplops=[sigma_m])
+    rho /= np.trace(rho.T)[:, None, None]
+    plot(t, np.conj(rho), ls=':')
+
+    # General hierarchy #######################################################
+    bath = {'g': [g], 'gamma': [[0.] * len(g)], 'Omega': [omega]}
+    meq = fm.FermionicIntegrator(bath, .5 * sigma_z, couplops=[sigma_m])
     t, rho = meq.get_rho(dt, t[-1], psi0=np.array(psi_0_sys))
-    rho /= trace(rho)[:, None, None]
-    for i in range(2):
-        pl.plot(t, np.real(rho[:, i, i]), ls=':', color=cl[i])
+    rho /= np.trace(rho.T)[:, None, None]
+    plot(t, rho)
+
+    # # meq = bm.BosonicIntegrator(4, bath, .5 * sigma_z, couplops=[sigma_m])
+    # meq = fm.FermionicIntegrator(bath, .5 * sigma_z, couplops=[sigma_m])
+    # t, rho = meq.get_rho(dt, t[-1], psi0=np.array(psi_0_sys))
+    # rho /= trace(rho)[:, None, None]
+    # plot(t, rho, ls=':')
+
     pl.show()
