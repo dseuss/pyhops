@@ -104,36 +104,33 @@ def _testcase_one_mode(h_sys, rho0, g, w, L, timesteps):
     comm = lambda A, B: dot(A, B) - dot(B, A)
     adj = lambda A: np.conj(np.transpose(A))
 
-    def rhs(t, y):
-        y = y.reshape((4, dim, dim))
-        ydot = np.empty(y.shape, dtype=complex)
+    prop = np.zeros((dim**2 * 4, dim**2 * 4), dtype=complex)
+    i = [[(slice(m*dim**2, (m+1)*dim**2), slice(n*dim**2, (n+1)*dim**2))
+          for n in range(4)] for m in range(4)]
 
-        # p00
-        ydot[0] = -1.j * comm(h_sys, y[0]) \
-            - dot(adj(L), y[2]) + dot(y[2], adj(L)) \
-            + dot(L, y[1]) - dot(y[1], L)
+    prop[i[0][0]] += -1.j * commutator(h_sys)
+    prop[i[0][2]] += -multiply_raveled(adj(L), 'l') + multiply_raveled(adj(L), 'r')
+    prop[i[0][1]] += multiply_raveled(L, 'l') - multiply_raveled(L, 'r')
 
-        # p01
-        ydot[1] = -1.j * comm(h_sys, y[1]) - np.conj(w) * y[1] \
-            + np.conj(g) * dot(y[0], adj(L)) \
-            - dot(adj(L), y[3]) - dot(y[3], adj(L))
+    prop[i[1][1]] += -1.j * commutator(h_sys) - np.conj(w) * np.identity(dim**2)
+    prop[i[1][0]] += np.conj(g) * multiply_raveled(adj(L), 'r')
+    prop[i[1][3]] += -multiply_raveled(adj(L), 'l') - multiply_raveled(adj(L), 'r')
 
-        # p10
-        ydot[2] = -1.j * comm(h_sys, y[2]) - w * y[2] \
-            + g * dot(L, y[0]) \
-            - dot(L, y[3]) - dot(y[3], L)
+    prop[i[2][2]] += -1.j * commutator(h_sys) - w * np.identity(dim**2)
+    prop[i[2][0]] += g * multiply_raveled(L, 'l')
+    prop[i[2][3]] += -multiply_raveled(L, 'l') - multiply_raveled(L, 'r')
 
-        # p11
-        ydot[3] = -1.j * comm(h_sys, y[3]) - (w + np.conj(w)) * y[3] \
-            + g * dot(L, y[1]) + np.conj(g) * dot(y[2], adj(L))
-        return ydot.ravel()
+    prop[i[3][3]] += -1.j * commutator(h_sys) - (w + np.conj(w)) * np.identity(dim**2)
+    prop[i[3][1]] += g * multiply_raveled(L, 'l')
+    prop[i[3][2]] += np.conj(g) * multiply_raveled(adj(L), 'r')
 
     y0 = np.zeros((4, dim, dim), dtype=complex)
     y0[0] = rho0
     rho = np.empty((len(timesteps), dim, dim), dtype=complex)
     rho[0] = rho0
 
-    r = complex_ode(rhs).set_integrator('vode', atol=1e-10, rtol=1e-10, nsteps=100) \
+    r = complex_ode(lambda t, y: prop.dot(y))\
+        .set_integrator('vode', atol=1e-10, rtol=1e-10, nsteps=100) \
         .set_initial_value(y0.ravel())
     for i, t in enumerate(timesteps[1:]):
         r.integrate(t)
