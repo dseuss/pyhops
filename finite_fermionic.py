@@ -77,7 +77,7 @@ def reduced_rho(psi, dim_sys):
     psi = psi.reshape((dim_sys, dim_env))
     rho = np.conj(psi)[:, :, None, None] * psi[None, None, :, :]
     rho_red = np.trace(rho, axis1=1, axis2=3)
-    return rho_red / np.trace(rho_red)
+    return rho_red
 
 
 def analytic_rho12(t, psi0, omega, strength):
@@ -96,12 +96,12 @@ def analytic_rho12(t, psi0, omega, strength):
 
 
 if __name__ == '__main__':
-    h_sys = 4 * np.diag((1, -1))
+    h_sys = .5 * 4 * np.diag((1, -1))
     sigma_x = np.array([[0, 1], [1, 0]])
     sigma_z = np.array([[1, 0], [0, -1]])
     sigma_m = np.array([[0, 0], [1, 0]])
-    g = [1.]
-    omega = [2.]
+    g = [1., 1., 2., 4.]
+    omega = [2., 1., 4., -1.5]
     cl = ['r', 'g']
     t, dt = np.linspace(0, 10, 1000, retstep=True)
     psi_0_sys = np.asarray([.6, .8])
@@ -119,30 +119,33 @@ if __name__ == '__main__':
     #         lw=2, color='k')
 
     # Full Hilbert space solution #############################################
-    prop = -1.j * full_hamiltonian(.5 * h_sys, sigma_m, omega, g)
+    prop = -1.j * full_hamiltonian(h_sys, sigma_m, omega, np.sqrt(g))
     psi0 = full_state(psi_0_sys, len(g)).astype(complex)
     _, psi = zodeint(lambda t, y: prop.dot(y), psi0, t,
                      rtol=10e-10, atol=10e-10)
     rho = np.asarray([reduced_rho(psi_t, 2) for psi_t in psi])
+    print(np.max(np.abs(np.trace(rho.T) - 1)))
+    rho /= np.trace(rho.T)[:, None, None]
     plot(t, rho, ls='--')
 
     # Manual hierarchy test ###################################################
-    _, rho = fm._testcase_one_mode(.5 * h_sys,
-                                   np.conj(psi_0_sys)[:, None] * psi_0_sys[None, :],
-                                   g[0],
-                                   1.j * omega[0],
-                                   sigma_m,
-                                   t)
+    # _, rho = fm._testcase_one_mode(h_sys,
+    #                                np.conj(psi_0_sys)[:, None] * psi_0_sys[None, :],
+    #                                g[0],
+    #                                1.j * omega[0],
+    #                                sigma_m,
+    #                                t)
 
-    rho /= np.trace(rho.T)[:, None, None]
-    plot(t, np.conj(rho), ls=':')
+    # rho /= np.trace(rho.T)[:, None, None]
+    # plot(t, np.conj(rho), ls=':')
 
     # General hierarchy #######################################################
     bath = {'g': [g], 'gamma': [[0.] * len(g)], 'Omega': [omega]}
-    meq = fm.FermionicIntegrator(bath, .5 * sigma_z, couplops=[sigma_m])
+    meq = fm.FermionicIntegrator(bath, h_sys, couplops=[sigma_m])
     t, rho = meq.get_rho(dt, t[-1], psi0=np.array(psi_0_sys))
+    print(np.max(np.abs(np.trace(rho.T) - 1)))
     rho /= np.trace(rho.T)[:, None, None]
-    plot(t, rho)
+    plot(t, rho, ls=':')
 
     # # meq = bm.BosonicIntegrator(4, bath, .5 * sigma_z, couplops=[sigma_m])
     # meq = fm.FermionicIntegrator(bath, .5 * sigma_z, couplops=[sigma_m])

@@ -29,6 +29,9 @@ class FermionicIntegrator(MasterIntegrator):
         self._nr_aux_states = struct.entries
         self._prop = self._setup_propagator(struct)
 
+        # print("WRONG")
+        # print(self._prop)
+
     def _setup_propagator(self, struct):
         """@todo: Docstring for _setup_propagator.
 
@@ -56,27 +59,27 @@ class FermionicIntegrator(MasterIntegrator):
 
                 base_c = struct.indbl[iind, mode] * dim_rho
                 if base_c >= 0:
-                    pref = (-1)**(sum(m[mode:])) * self._g[mode]
+                    pref = (-1)**(sum(m[mode+1:])) * self._g[mode]
                     prop[base:base + dim_rho, base_c:base_c + dim_rho] += \
                         multiply_raveled(pref * couplop, side='l')
 
                 base_c = struct.indbl[iind, self._modes + mode] * dim_rho
                 if base_c >= 0:
-                    pref = (-1)**(sum(n[mode:])) * np.conj(self._g[mode])
+                    pref = (-1)**(sum(n[mode+1:])) * np.conj(self._g[mode])
                     prop[base:base + dim_rho, base_c:base_c + dim_rho] += \
                         multiply_raveled(pref * adj(couplop), side='r')
 
                 base_c = struct.indab[iind, mode] * dim_rho
                 if base_c >= 0:
                     prop[base:base + dim_rho, base_c:base_c + dim_rho] += \
-                        multiply_raveled((-1)**(sum(m[mode:]) + 1) * adj(couplop), side='l') \
+                        - multiply_raveled((-1)**(sum(m[mode+1:])) * adj(couplop), side='l') \
                         + multiply_raveled((-1)**sum(n) * adj(couplop), side='r')
 
                 base_c = struct.indab[iind, self._modes + mode] * dim_rho
                 if base_c >= 0:
                     prop[base:base + dim_rho, base_c:base_c + dim_rho] += \
-                        multiply_raveled((-1)**(sum(m) + 1) * couplop, side='l') \
-                        - multiply_raveled((-1)**sum(n[mode:]) * couplop,
+                        multiply_raveled((-1)**(sum(m)) * couplop, side='l') \
+                        - multiply_raveled((-1)**sum(n[mode+1:]) * couplop,
                                            side='r')
 
         return prop.tocsr()
@@ -104,7 +107,7 @@ def _testcase_one_mode(h_sys, rho0, g, w, L, timesteps):
     comm = lambda A, B: dot(A, B) - dot(B, A)
     adj = lambda A: np.conj(np.transpose(A))
 
-    prop = np.zeros((dim**2 * 4, dim**2 * 4), dtype=complex)
+    prop = sp.lil_matrix((dim**2 * 4, dim**2 * 4), dtype=complex)
     i = [[(slice(m*dim**2, (m+1)*dim**2), slice(n*dim**2, (n+1)*dim**2))
           for n in range(4)] for m in range(4)]
 
@@ -123,6 +126,9 @@ def _testcase_one_mode(h_sys, rho0, g, w, L, timesteps):
     prop[i[3][3]] += -1.j * commutator(h_sys) - (w + np.conj(w)) * np.identity(dim**2)
     prop[i[3][1]] += g * multiply_raveled(L, 'l')
     prop[i[3][2]] += np.conj(g) * multiply_raveled(adj(L), 'r')
+
+    print('CORRECT')
+    print(prop)
 
     y0 = np.zeros((4, dim, dim), dtype=complex)
     y0[0] = rho0
