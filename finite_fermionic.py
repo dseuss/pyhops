@@ -20,9 +20,10 @@ import matplotlib.pyplot as pl
 import scipy.sparse as sp
 from itertools import izip
 
-import physics.qustat as qs
+import physics.qstat as qs
 import mhops.fermionic as fm
 from tools.sci import zodeint
+from tools.helpers import Timer
 
 
 def full_hamiltonian(h_sys, coupl, omega, strength):
@@ -100,10 +101,10 @@ if __name__ == '__main__':
     sigma_x = np.array([[0, 1], [1, 0]])
     sigma_z = np.array([[1, 0], [0, -1]])
     sigma_m = np.array([[0, 0], [1, 0]])
-    g = [1., 1., 2., 4.]
-    omega = [2., 1., 4., -1.5]
+    g = [10, 21., 5, 7, 49., 43.]
+    omega = [2., 1., 4., -1.5, 10., 5.]
     cl = ['r', 'g']
-    t, dt = np.linspace(0, 10, 1000, retstep=True)
+    t, dt = np.linspace(0, 1, 1000, retstep=True)
     psi_0_sys = np.asarray([.6, .8])
 
     def plot(t, rho, **kwargs):
@@ -121,12 +122,14 @@ if __name__ == '__main__':
     # Full Hilbert space solution #############################################
     prop = -1.j * full_hamiltonian(h_sys, sigma_m, omega, np.sqrt(g))
     psi0 = full_state(psi_0_sys, len(g)).astype(complex)
-    _, psi = zodeint(lambda t, y: prop.dot(y), psi0, t,
-                     rtol=10e-10, atol=10e-10)
+    with Timer():
+        _, psi = zodeint(lambda t, y: prop.dot(y), psi0, t,
+                        rtol=10e-10, atol=10e-10)
     rho = np.asarray([reduced_rho(psi_t, 2) for psi_t in psi])
     print(np.max(np.abs(np.trace(rho.T) - 1)))
     rho /= np.trace(rho.T)[:, None, None]
-    plot(t, rho, ls='--')
+    for i in range(2):
+        pl.plot(t, np.real(rho[:, i, i]), color='k', lw=.5)
 
     # Manual hierarchy test ###################################################
     # _, rho = fm._testcase_one_mode(h_sys,
@@ -141,11 +144,16 @@ if __name__ == '__main__':
 
     # General hierarchy #######################################################
     bath = {'g': [g], 'gamma': [[0.] * len(g)], 'Omega': [omega]}
-    meq = fm.FermionicIntegrator(bath, h_sys, couplops=[sigma_m])
-    t, rho = meq.get_rho(dt, t[-1], psi0=np.array(psi_0_sys))
-    print(np.max(np.abs(np.trace(rho.T) - 1)))
-    rho /= np.trace(rho.T)[:, None, None]
-    plot(t, rho, ls=':')
+    lss = [':', '--']
+    for i, depth in enumerate([1]):
+        meq = fm.FermionicIntegrator(bath, h_sys, couplops=[sigma_m],
+                                     pop_modes=depth)
+        print(meq.nr_aux_states)
+        with Timer():
+            t, rho = meq.get_rho(dt, t[-1], psi0=np.array(psi_0_sys))
+        print(np.max(np.abs(np.trace(rho.T) - 1)))
+        rho /= np.trace(rho.T)[:, None, None]
+        plot(t, rho, ls=lss[i], lw=2)
 
     # # meq = bm.BosonicIntegrator(4, bath, .5 * sigma_z, couplops=[sigma_m])
     # meq = fm.FermionicIntegrator(bath, .5 * sigma_z, couplops=[sigma_m])

@@ -29,9 +29,6 @@ class FermionicIntegrator(MasterIntegrator):
         self._nr_aux_states = struct.entries
         self._prop = self._setup_propagator(struct)
 
-        # print("WRONG")
-        # print(self._prop)
-
     def _setup_propagator(self, struct):
         """@todo: Docstring for _setup_propagator.
 
@@ -104,7 +101,6 @@ def _testcase_one_mode(h_sys, rho0, g, w, L, timesteps):
     from scipy.integrate import complex_ode
 
     dim = h_sys.shape[0]
-    comm = lambda A, B: dot(A, B) - dot(B, A)
     adj = lambda A: np.conj(np.transpose(A))
 
     prop = sp.lil_matrix((dim**2 * 4, dim**2 * 4), dtype=complex)
